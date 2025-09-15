@@ -1,0 +1,170 @@
+Here’s a detailed **ToDo list as a project prompt based on your request**, focused on simplicity, speed, and using **Node.js + LangChain + Gemini (no third-party APIs)**:
+
+---
+
+## 🎯 **Project Prompt – Intelligent Loan Document Analyzer (Basic PoC)**
+
+---
+
+### ✅ **Objective**
+
+Build a small backend application using **Node.js + LangChain with Gemini model integration** that allows:
+
+1. Uploading a loan document (as a text file).
+2. Extracting and displaying basic structured information from the document.
+3. Enabling the user to ask questions about the document in natural language, and showing model-generated answers on screen.
+
+---
+
+### ✅ **High-Level Flow**
+
+1. 📤 User uploads a loan document (text file).
+2. 📝 Backend reads the file content.
+3. ✍️ Use LangChain with Gemini to:
+
+   * Extract key fields like:
+
+     * Customer Name
+     * Loan Amount
+     * Loan Tenure
+     * PAN/Aadhaar
+     * Collateral Type
+   * Show extracted data in a structured JSON format.
+4. ❓ Allow the user to input custom questions about the document.
+
+   * Example questions:
+
+     * “What is the loan amount?”
+     * “What is the customer’s PAN number?”
+   * System passes the question + document text to LangChain + Gemini → Returns the answer.
+5. ✅ Display the answer on the frontend screen.
+
+---
+
+### ✅ **Technical Constraints**
+
+* 🚫 Do NOT integrate any third-party APIs other than LangChain + Gemini.
+* ✅ Everything happens locally or via Gemini model + LangChain.
+* 💾 Store the document temporarily in the server filesystem.
+
+---
+
+### ✅ **Basic Folder Structure**
+
+```
+loan-analyzer/
+├── server.js           // Express backend
+├── geminiService.js    // LangChain + Gemini integration
+├── public/             // Simple HTML frontend for file upload + question input
+├── uploads/            // Temporary file storage
+├── package.json
+├── .env                // Gemini API key (if required)
+```
+
+---
+
+### ✅ **Step-by-Step ToDo List**
+
+---
+
+#### 1️⃣ Set up Node.js + Express
+
+* Initialize project with `npm init`.
+* Install dependencies:
+
+  ```bash
+  npm install express multer langchain dotenv
+  ```
+
+---
+
+#### 2️⃣ Build File Upload API
+
+* Use **multer** middleware to handle file uploads.
+* Save uploaded file to `uploads/`.
+
+---
+
+#### 3️⃣ Read Uploaded Document
+
+* Read the uploaded file content as plain text.
+
+---
+
+#### 4️⃣ Implement LangChain + Gemini Integration
+
+* Create a basic service (`geminiService.js`) to:
+
+  * Extract key fields from document.
+  * Answer user’s custom questions.
+
+* Example prompt for extraction:
+
+  ```plaintext
+  Extract the following fields from this document:
+  - Customer Name
+  - Loan Amount
+  - PAN/Aadhaar
+  - Loan Tenure
+  - Collateral Type
+
+  Document:
+  {document_text}
+  ```
+
+* Example prompt for Q\&A:
+
+  ```plaintext
+  Given the following loan document, answer the question in detail:
+
+  Document:
+  {document_text}
+
+  Question:
+  {user_question}
+  ```
+
+---
+
+#### 5️⃣ Simple Frontend (HTML + Vanilla JS)
+
+* Upload file form → POST to file upload API.
+* Show extracted JSON data in a `<pre>` block.
+* Input field for custom question → POST to Q\&A API → Show response.
+
+---
+
+#### 6️⃣ Final Flow Example
+
+1. Upload `loan_application.txt`.
+
+2. System shows:
+
+   ```json
+   {
+     "Customer Name": "John Doe",
+     "Loan Amount": "₹5,00,000",
+     "PAN": "ABCDE1234F",
+     "Loan Tenure": "24 months",
+     "Collateral": "Car"
+   }
+   ```
+
+3. Ask: “What is the customer’s PAN number?” → Shows:
+   `"ABCDE1234F"`
+
+---
+
+#### 7️⃣ No Third-Party Integration
+
+* Only depend on LangChain + Gemini → No external APIs for KYC validation or database calls.
+
+---
+
+### ✅ **Why This is Useful**
+
+* Simple PoC, easy to build and demo.
+* Shows core strength of LangChain + Gemini in document understanding + question answering.
+* Useful for internal loan process automation in the future.
+
+---

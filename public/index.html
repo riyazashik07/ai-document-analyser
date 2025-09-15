@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Loan Document Analyzer</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --muted: #94a3b8;
+      --text: #e5e7eb;
+      --accent: #22d3ee;
+      --accent-2: #a78bfa;
+      --success: #34d399;
+      --danger: #f97393;
+      --card: #0b1220;
+      --border: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+    header { padding: 24px; background: linear-gradient(90deg, var(--panel), #0b1220); border-bottom: 1px solid var(--border); }
+    header h1 { margin: 0 0 6px; font-size: 22px; }
+    header p { margin: 0; color: var(--muted); }
+
+    .container { padding: 24px; max-width: 1080px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .card h3 { margin: 0 0 12px; font-size: 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+    input[type="file"], input[type="text"] { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
+    button { padding: 10px 14px; border-radius: 8px; border: 1px solid transparent; background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #001018; font-weight: 700; cursor: pointer; }
+    button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .qa-list { display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow: auto; padding-right: 4px; }
+    .qa { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+    .qa .q { color: var(--accent); font-weight: 600; margin-bottom: 6px; }
+    .qa .a { white-space: pre-wrap; }
+    .muted { color: var(--muted); }
+    .hidden { display: none !important; }
+    .spacer { height: 8px; }
+    /* Loader */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <script>
+    async function fetchHistory() {
+      const res = await fetch('/api/history');
+      const data = await res.json();
+      renderHistory(data.history || []);
+    }
+
+    function renderHistory(items) {
+      const container = document.getElementById('qaList');
+      container.innerHTML = '';
+      const ordered = Array.isArray(items) ? items.slice().reverse() : [];
+      for (const it of ordered) {
+        const div = document.createElement('div');
+        div.className = 'qa';
+        const when = new Date(it.ts || Date.now()).toLocaleTimeString();
+        div.innerHTML = `<div class="q">Q (${when}): ${escapeHtml(it.q || '')}</div><div class="a">${escapeHtml(it.a || '')}</div>`;
+        container.appendChild(div);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function renderExtracted(obj) {
+      const table = document.getElementById('extractTable');
+      table.innerHTML = '';
+      const entries = Object.entries(obj || {});
+      for (const [k, v] of entries) {
+        const tr = document.createElement('tr');
+        const tdK = document.createElement('td');
+        const tdV = document.createElement('td');
+        tdK.textContent = k;
+        tdV.textContent = v || '';
+        tr.appendChild(tdK); tr.appendChild(tdV);
+        table.appendChild(tr);
+      }
+      document.getElementById('extractResult').classList.toggle('hidden', entries.length === 0);
+    }
+
+    function showLoading() {
+      document.getElementById('overlay').classList.remove('hidden');
+      const ub = document.getElementById('uploadBtn');
+      const ab = document.getElementById('askBtn');
+      if (ub) ub.disabled = true;
+      if (ab) ab.disabled = true;
+    }
+
+    function hideLoading() {
+      document.getElementById('overlay').classList.add('hidden');
+      const ub = document.getElementById('uploadBtn');
+      const ab = document.getElementById('askBtn');
+      if (ub) ub.disabled = false;
+      if (ab) ab.disabled = false;
+    }
+
+    async function uploadAndExtract(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('file');
+      if (!fileInput.files[0]) return;
+      const data = new FormData();
+      data.append('file', fileInput.files[0]);
+      document.getElementById('uploadMsg').textContent = 'Uploading...';
+      showLoading();
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: data });
+        const json = await res.json();
+        if (json.error) {
+          document.getElementById('uploadMsg').textContent = 'Upload failed: ' + json.error;
+          return;
+        }
+        document.getElementById('uploadMsg').textContent = 'Uploaded and extracted successfully';
+        renderExtracted(json.extracted || {});
+        await fetchHistory();
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function askQuestion() {
+      const q = document.getElementById('question').value.trim();
+      if (!q) return;
+      showLoading();
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q })
+        });
+        const json = await res.json();
+        await fetchHistory();
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function clearHistory() {
+      await fetch('/api/history/clear', { method: 'POST' });
+      await fetchHistory();
+    }
+
+    window.addEventListener('DOMContentLoaded', fetchHistory);
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Intelligent Loan Document Analyzer</h1>
+    <p>Upload a document (.txt / .pdf / image), extract key fields, and chat.</p>
+  </header>
+
+  <div class="container">
+    <div class="grid">
+      <div class="card">
+        <h3>1) Upload Document</h3>
+        <form id="uploadForm" onsubmit="uploadAndExtract(event)">
+          <label for="file">Choose file</label>
+          <div class="row">
+            <input id="file" name="file" type="file" accept=".txt,.pdf,image/*" required />
+            <button id="uploadBtn" type="submit">Upload & Extract</button>
+          </div>
+          <div class="spacer"></div>
+          <div id="uploadMsg" class="muted"></div>
+        </form>
+        <div id="extractResult" class="hidden" style="margin: 10px;">
+          <h3>Extracted Fields</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody id="extractTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>2) Ask Questions</h3>
+        <label for="question">Question</label>
+        <div class="row">
+          <input id="question" type="text" placeholder="What is the loan amount?" />
+          <button id="askBtn" onclick="askQuestion()">Ask</button>
+          <button class="secondary" onclick="clearHistory()" type="button">Clear Session</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="qa-list" id="qaList"></div>
+      </div>
+    </div>
+  </div>
+  <!-- Global Loader Overlay -->
+  <div id="overlay" class="overlay hidden">
+    <div class="spinner"></div>
+  </div>
+</body>
+</html>
+
+

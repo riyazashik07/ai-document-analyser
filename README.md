@@ -11,6 +11,12 @@ Node.js + Express + LangChain + Gemini. Upload a loan document (.txt/.pdf/image)
 - Simple, modern UI with loader overlay during API calls
 - Increased timeouts for long OCR/parsing; 50 MB upload limit
 
+## Screenshot
+
+![App Screenshot](assests/Screenshot1.png)
+![App Screenshot](assests/Screenshot2.png)
+
+
 ## Requirements
 
 - Node.js 18+ (recommended)
